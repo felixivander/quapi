@@ -1,0 +1,133 @@
+
+import numpy as np
+import csv
+import math
+import torch as t
+import matplotlib.pyplot as plt
+from numpy.linalg import eig
+from scipy.linalg import expm
+from matplotlib.animation import FuncAnimation
+from scipy.integrate import trapz
+beta=0.1
+alpha=4
+charlie=0.001
+bbb=1
+
+kmax=4
+N=100
+
+ga=0.005
+No=50
+a=-20
+b=20
+Inf=1
+hbar=1
+om=np.linspace(-20,20,No)
+y=np.zeros(No,dtype = 'complex_')
+tarr = np.linspace(0.001,15,num=N)
+delt=tarr[2]-tarr[1]
+steps=7
+xmin=-10
+xmax=10
+win=4
+positions=np.linspace(xmin,xmax,steps)
+K=np.zeros((2,2,2,2),dtype = 'complex_')
+L=np.zeros((2,2,2,2,N),dtype = 'complex_')
+A=np.zeros((2,2,len(tarr)),dtype = 'complex_')
+
+A[0,0,0]=1
+
+Hs=np.array([[0,0.5],[0.5,1]])
+Ss=np.array([[-1,0],[0,1]])
+#coupling is sigma z
+DHs,V=eig(Ss)
+DD=np.diag(DHs)
+#A[:,:,0]=np.matmul(V,np.matmul(A[:,:,0],np.linalg.inv(V)))
+#Hs=np.matmul(V,np.matmul(Hs,np.linalg.inv(V)))
+print(A[:,:,0])
+print(Hs)
+def J(x): #Spectral density
+    return ga*x if x>0 else -ga*x #Ohmic bath
+def nb(o): #Bose occupation distribution
+    return 1/(np.exp(o*beta)-1)
+def n(kk,ll,t):
+    l = min([kk, ll])
+    k= max([kk,ll])
+    if k == l:
+        if 0<k<N:
+            for i in enumerate(om):
+                y[i[0]]=1/(2*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(1-np.exp(-1j*om[i[0]]*delt))
+        else:
+            for i in enumerate(om):
+                y[i[0]]=1/(2*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(1-np.exp(-1j*om[i[0]]*delt/2))
+            
+    else:
+        if 0<k<N:
+            if l>0:
+                for i in enumerate(om):
+                    y[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(math.sin(om[i[0]]*delt/2)**2)*np.exp(-1j*om[i[0]]*delt*(k-l))
+            else:
+                for i in enumerate(om):
+                    y[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(math.sin(om[i[0]]*delt/4)**2)*(math.sin(om[i[0]]*delt/2)**2)*np.exp(-1j*om[i[0]]*(l*delt-delt/4))
+            
+        else:
+            if l==0:
+                for i in enumerate(om):
+                    y[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(math.sin(om[i[0]]*delt/4)**2)*np.exp(-1j*om[i[0]]*(t-delt/2))
+            else:
+                for i in enumerate(om):
+                    y[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(math.sin(om[i[0]]*delt/4)**2)*(math.sin(om[i[0]]*delt/2)**2)*np.exp(-1j*om[i[0]]*(t-l*delt-delt/4))
+    return trapz(y,om)
+#for xp in enumerate(forpositions):
+#            Inf=Inf*np.exp(-1/hbar*(xp[1]-backpositions[xp[0]])*(n(xp[0],xp[0],0)*xp[1]-np.conjugate(n(xp[0],xp[0],0))*backpositions[xp[0]]))
+#for delk in np.linspace(1,steps-1,steps,dtype=np.int8):
+#    Nmax=steps-delk
+#    for xp in enumerate(forpositions[:Nmax]):
+#        for xm in enumerate(backpositions[:Nmax]):
+#            Inf=Inf*np.exp(-1/hbar*(forpositions[xp[0]+delk]-backpositions[xp[0]+delk])*(n(xp[0]+delk,xp[0],time)*xp[1]-np.conjugate(n(xp[0]+delk,xp[0],time))*backpositions[xp[0]]))
+Inf=1
+onetwo=np.linspace(0,1,2,dtype='int')
+#onetwo[0]=Hs[0,0]
+#onetwo[1]=Hs[1,1]
+for tin in enumerate(tarr):
+    Inf=0
+    for x1 in enumerate(onetwo): #forpositions is folded s+ and s-. Each is as long as the position grid
+        for x2 in enumerate(onetwo):
+            #Inf=np.exp(-1/hbar*(x1[1]-x2[1])*(n(tin[0],tin[0],tin[1])*x1[1]-np.conjugate(n(tin[0],tin[0],tin[1]))*x2[1]))    
+            TEO=expm(-1j*Hs*delt)
+            TEO2=expm(1j*Hs*delt)
+            #print(TEO)
+            for x3 in enumerate(onetwo):
+                for x4 in enumerate(onetwo):
+                    Inf=np.exp(-1/hbar*(x1[1]-x2[1])*(n(tin[0],tin[0],tin[1])*x1[1]-np.conjugate(n(tin[0],tin[0],tin[1]))*x2[1]))
+                    for delk in np.linspace(1,N-tin[0]-1,N-tin[0],dtype=np.int8):
+                        Inf=Inf*np.exp(-1/hbar*(x3[1]-x4[1])*(n(tin[0]+delk,tin[0],tin[1])*x1[1]-np.conjugate(n(tin[0]+delk,tin[0],tin[1]))*x2[1]))
+                    #Inf=1
+                    #print(Inf)
+                    #for tin2 in enumerate(tarr[tin[0]:]):
+                    #    for tin3 in enumerate(tarr[:tin[0]]):
+                    #        Inf=Inf*np.exp(-1/hbar*(x3[1]-x4[1])*(n(tin[0]+tin2[],tin[0],tin[1])*x1[1]-np.conjugate(n(tin[0]+delk,tin[0],tin[1]))*x2[1]))
+                    K[x1[0],x2[0],x3[0],x4[0]]=TEO[x3[0],x1[0]]*TEO2[x4[0],x2[0]]
+                    L[x1[0],x2[0],x3[0],x4[0],tin[0]]=K[x1[0],x2[0],x3[0],x4[0]]*Inf
+
+for tin in enumerate(tarr[:N-1]):
+    LL=np.reshape(L[:,:,:,:,tin[0]],(4,4))
+    print(LL)
+    AA=np.matmul(LL,np.reshape(A[:,:,tin[0]],(4,1)))
+    
+    #for delk in np.linspace(0,N-kmax-1,N-kmax,dtype=np.int8):
+    A[:,:,tin[0]+1]=np.reshape(AA,(2,2))
+        
+    #Norm=0
+    #for i in np.linspace(0,steps-1,steps,dtype='int'):
+    #    Norm=Norm+A[i*steps+i,tin[0]+1]
+    #A[:,tin[0]+1]=A[:,tin[0]+1]/Norm
+    #print(L)
+    #A[:,:,tin[0]+1]=A[:,:,tin[0]+1]/(A[0,0,tin[0]+1]+A[1,1,tin[0]+1])
+#for tin in enumerate(tarr):
+    #A[:,:,tin[0]]=np.matmul(np.linalg.inv(V),np.matmul(A[:,:,tin[0]],V))
+
+plt.figure()
+plt.plot(tarr,A[0,0,:])
+plt.plot(tarr,A[1,1,:])
+plt.show()
