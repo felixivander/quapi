@@ -1,133 +1,129 @@
-
 import numpy as np
 import csv
 import math
-import torch as t
 import matplotlib.pyplot as plt
 from numpy.linalg import eig
 from scipy.linalg import expm
 from matplotlib.animation import FuncAnimation
 from scipy.integrate import trapz
-beta=1
-alpha=4
-charlie=0.001
-bbb=1
 
-kmax=4
-N=200
-
+##DVR
+def DVR(a,b,N,index,out):
+    alpha=8
+    beta=1
+    charlie=0.01
+    m=1
+    hbar=1
+    K=np.zeros((N,N),dtype='float')
+    V=np.zeros((N,N),dtype='float')
+    ii=np.linspace(a,b,N)
+    Delx=(b-a)/N
+    for i in enumerate(ii):
+        for j in enumerate(ii):
+            if i[0]==j[0]:
+                V[i[0],j[0]]=-alpha*1/2*i[1]**2+beta*i[1]**4/4+charlie*i[1]
+                K[i[0],j[0]]=hbar**2/(2*m*Delx**2)*(math.pi**2)/3
+            else:
+                K[i[0],j[0]]=hbar**2/(m*Delx**2)*(-1)**(i[0]-j[0])/(i[0]-j[0])**2
+    eigen,eigf=eig(K+V)
+    idx = np.argsort(eigen)
+    eigen = eigen[idx]
+    eigf = eigf[:,idx]
+    return eigen[:index] if out ==0 else eigf
+##Setup system
+tarr = np.linspace(0.001,15000,num=25000)
+T=1
 ga=0.005
-No=50
-a=-20
-b=20
-Inf=1
-hbar=1
-om=np.linspace(-15,15,No)
-y=np.zeros(No,dtype = 'complex_')
-tarr = np.linspace(0.001,200,num=N)
-delt=tarr[2]-tarr[1]
-steps=7
+def J(x): #Spectral density
+    return ga*x #Ohmic bath
+def nb(o): #Bose occupation distribution
+    return 1/(math.exp(o*T)-1)
+def k(o): #Calculating real part of bath correlation function laplace transform
+    if abs(o)<10**-3:
+        return ga*T
+    elif o<0:
+        return J(abs(o))*nb(abs(o))
+    else:
+        return J(abs(o))*(nb(abs(o))+1)
+    
+#Hs=np.array([[0,0,0,0],[0,0,0,0],[0,0,1,0],[0,0,0,1]]) #System hamiltonian
+steps=1001
 xmin=-10
 xmax=10
 win=4
 positions=np.linspace(xmin,xmax,steps)
-K=np.zeros((2,2,2,2),dtype = 'complex_')
-L=np.zeros((2,2,2,2,N),dtype = 'complex_')
-A=np.zeros((2,2,len(tarr)),dtype = 'complex_')
-
-A[0,0,0]=1
-
-Hs=np.array([[0,0.5],[0.5,1]])
-Ss=np.array([[-1,0],[0,1]])
-#coupling is sigma z
-DHs,V=eig(Ss)
-DD=np.diag(DHs)
-#A[:,:,0]=np.matmul(V,np.matmul(A[:,:,0],np.linalg.inv(V)))
-#Hs=np.matmul(V,np.matmul(Hs,np.linalg.inv(V)))
-print(A[:,:,0])
+thres=0
+print(np.where(positions==thres))
+Hs=np.diag(DVR(xmin,xmax,steps,win,0))
+WFs=DVR(xmin,xmax,steps,win,1)
+for index in np.linspace(0,win-1,win,dtype='int'):
+    WFs[:,index]=WFs[:,index]/(trapz(abs(WFs[:,index])**2,positions[:]))**0.5
 print(Hs)
-def J(x): #Spectral density
-    return ga*x if x>0 else -ga*x #Ohmic bath
-def nb(o): #Bose occupation distribution
-    return 1/(np.exp(o*beta)-1)
-def n(kk,ll,t):
-    l = min([kk, ll])
-    k= max([kk,ll])
-    if k == l:
-        if 0<k<N:
-            for i in enumerate(om):
-                y[i[0]]=1/(2*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(1-np.exp(-1j*om[i[0]]*delt))
-        else:
-            for i in enumerate(om):
-                y[i[0]]=1/(2*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(1-np.exp(-1j*om[i[0]]*delt/2))
-            
-    else:
-        if 0<k<N:
-            if l>0:
-                for i in enumerate(om):
-                    y[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(math.sin(om[i[0]]*delt/2)**2)*np.exp(-1j*om[i[0]]*delt*(k-l))
-            else:
-                for i in enumerate(om):
-                    y[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(math.sin(om[i[0]]*delt/4)**2)*(math.sin(om[i[0]]*delt/2)**2)*np.exp(-1j*om[i[0]]*(l*delt-delt/4))
-            
-        else:
-            if l==0:
-                for i in enumerate(om):
-                    y[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(math.sin(om[i[0]]*delt/4)**2)*np.exp(-1j*om[i[0]]*(t-delt/2))
-            else:
-                for i in enumerate(om):
-                    y[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*(math.sin(om[i[0]]*delt/4)**2)*(math.sin(om[i[0]]*delt/2)**2)*np.exp(-1j*om[i[0]]*(t-l*delt-delt/4))
-    return trapz(y,om)
-#for xp in enumerate(forpositions):
-#            Inf=Inf*np.exp(-1/hbar*(xp[1]-backpositions[xp[0]])*(n(xp[0],xp[0],0)*xp[1]-np.conjugate(n(xp[0],xp[0],0))*backpositions[xp[0]]))
-#for delk in np.linspace(1,steps-1,steps,dtype=np.int8):
-#    Nmax=steps-delk
-#    for xp in enumerate(forpositions[:Nmax]):
-#        for xm in enumerate(backpositions[:Nmax]):
-#            Inf=Inf*np.exp(-1/hbar*(forpositions[xp[0]+delk]-backpositions[xp[0]+delk])*(n(xp[0]+delk,xp[0],time)*xp[1]-np.conjugate(n(xp[0]+delk,xp[0],time))*backpositions[xp[0]]))
-Inf=1
-onetwo=np.linspace(0,1,2,dtype='int')
-#onetwo[0]=Hs[0,0]
-#onetwo[1]=Hs[1,1]
-for tin in enumerate(tarr):
-    Inf=0
-    for x1 in enumerate(onetwo): #forpositions is folded s+ and s-. Each is as long as the position grid
-        for x2 in enumerate(onetwo):
-            #Inf=np.exp(-1/hbar*(x1[1]-x2[1])*(n(tin[0],tin[0],tin[1])*x1[1]-np.conjugate(n(tin[0],tin[0],tin[1]))*x2[1]))    
-            TEO=expm(-1j*Hs*delt)
-            TEO2=expm(1j*Hs*delt)
-            #print(TEO)
-            for x3 in enumerate(onetwo):
-                for x4 in enumerate(onetwo):
-                    Inf=np.exp(-1/hbar*(x1[1]-x2[1])*(n(tin[0],tin[0],tin[1])*x1[1]-np.conjugate(n(tin[0],tin[0],tin[1]))*x2[1]))
-                    for delk in np.linspace(1,tin[0]-1,tin[0],dtype=np.int8):
-                        Inf=Inf*np.exp(-1/hbar*(x3[1]-x4[1])*(n(tin[0],tin[0]-delk,tin[1])*x1[1]-np.conjugate(n(tin[0],tin[0]-delk,tin[1]))*x2[1]))
-                    #Inf=10
-                    #print(Inf)
-                    #for tin2 in enumerate(tarr[tin[0]:]):
-                    #    for tin3 in enumerate(tarr[:tin[0]]):
-                    #        Inf=Inf*np.exp(-1/hbar*(x3[1]-x4[1])*(n(tin[0]+tin2[],tin[0],tin[1])*x1[1]-np.conjugate(n(tin[0]+delk,tin[0],tin[1]))*x2[1]))
-                    K[x1[0],x2[0],x3[0],x4[0]]=TEO[x3[0],x1[0]]*TEO2[x4[0],x2[0]]
-                    L[x1[0],x2[0],x3[0],x4[0],tin[0]]=K[x1[0],x2[0],x3[0],x4[0]]*Inf
+n=len(Hs)
 
-for tin in enumerate(tarr[:N-1]):
-    LL=np.reshape(L[:,:,:,:,tin[0]],(4,4))
-    print(LL)
-    AA=np.matmul(LL,np.reshape(A[:,:,tin[0]],(4,1)))
+rhos=np.array([[1,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]])
+rhot=np.zeros((n,n,len(tarr)),dtype = 'complex_')
+Psit=np.zeros((steps,len(tarr)),dtype = 'complex_')
+rhoDt=np.zeros((n,n,len(tarr)),dtype = 'complex_')
+R=np.zeros((n,n,n,n),dtype = 'complex_')
+DHs,V=eig(Hs)
+Pp=np.zeros(len(tarr))
+krp=np.zeros(len(tarr))
+Ppd=np.zeros(len(tarr))
+Cfs=np.zeros(len(tarr))
+Pr=np.zeros(len(tarr))
+Prd=np.zeros(len(tarr))
+SL=np.array([[0,0,1,1],[0,0,1,1],[1,1,0,0],[1,1,0,0]]) #System coupling matrix
+#SL=np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+S=np.matmul(np.matmul(np.linalg.inv(V),SL),V)
+rhosD=np.matmul(np.matmul(np.linalg.inv(V),rhos),V)
+##Construct Liouvillian tensor
+nn=np.linspace(0,n-1,n,dtype=np.int8)
+for a in nn:
+    for b in nn:
+        R[a][b][a][b]=R[a][b][a][b]+1j*(DHs[a]-DHs[b])
+        for c in nn:
+            for d in nn:
+                R[a,b,d,b]=R[a,b,d,b]-S[a,c]*S[c,d]*k(DHs[d]-DHs[c])/2
+                R[a,b,a,c]=R[a,b,a,c]-S[b,d]*S[d,c]*k(DHs[c]-DHs[d])/2
+                R[a,b,c,d]=R[a,b,c,d]+(S[d,b]*S[a,c]*k(DHs[c]-DHs[a])/2+S[c,a]*S[b,d]*k(DHs[d]-DHs[b])/2)
     
-    #for delk in np.linspace(0,N-kmax-1,N-kmax,dtype=np.int8):
-    A[:,:,tin[0]+1]=np.reshape(AA,(2,2))
-        
-    #Norm=0
-    #for i in np.linspace(0,steps-1,steps,dtype='int'):
-    #    Norm=Norm+A[i*steps+i,tin[0]+1]
-    #A[:,tin[0]+1]=A[:,tin[0]+1]/Norm
-    #print(L)
-    #A[:,:,tin[0]+1]=A[:,:,tin[0]+1]/(A[0,0,tin[0]+1]+A[1,1,tin[0]+1])
-#for tin in enumerate(tarr):
-    #A[:,:,tin[0]]=np.matmul(np.linalg.inv(V),np.matmul(A[:,:,tin[0]],V))
-
-plt.figure()
-plt.plot(tarr,A[0,0,:])
-plt.plot(tarr,A[1,1,:])
+##Dynamics
+L=np.reshape(R,(n**2,n**2))
+print()
+ithr=positions.tolist().index(thres)
+print(ithr)
+rhosv=np.reshape(rhosD,n**2)
+for tin in enumerate(tarr):
+    Lexp=expm(L*tin[1])
+    rhoDt[0:,0:,tin[0]]=np.reshape(np.matmul(Lexp,rhosv),(n,n))
+    rhot[0:,0:,tin[0]]=np.matmul(np.matmul(V,rhoDt[0:,0:,tin[0]]),np.linalg.inv(V))
+    for index in np.linspace(0,win-1,win,dtype='int'):
+        for index2 in np.linspace(0,win-1,win,dtype='int'):
+            Psit[:,tin[0]]=Psit[:,tin[0]]+(rhot[index,index2,tin[0]])*np.multiply((WFs[:,index]),np.conjugate((WFs[:,index2])))
+    #Psit[:,tin[0]]=Psit[:,tin[0]]/(trapz(abs(Psit[:,tin[0]]),positions[:]))**0.5
+    Pr[tin[0]]=trapz((Psit[:ithr,tin[0]]),positions[:ithr])
+    Pp[tin[0]]=1-Pr[tin[0]]
+    if tin[0]>0:
+        Ppd[tin[0]]=(Pp[tin[0]]-Pp[tin[0]-1])/(tarr[tin[0]]-tarr[tin[0]-1])
+        Prd[tin[0]]=(Pr[tin[0]]-Pr[tin[0]-1])/(tarr[tin[0]]-tarr[tin[0]-1])
+for tin in enumerate(tarr): 
+    krp[tin[0]]=(Ppd[tin[0]])/(Pr[tin[0]]-Pp[tin[0]]*Pr[len(tarr)-1]/Pp[len(tarr)-1])
+    Cfs[tin[0]]=trapz((-Prd[0:tin[0]]),tarr[0:tin[0]])
+fig, ax = plt.subplots()
+#ax[0].plot(tarr[1:2000], Pr[1:2000])
+#ax[0].plot(tarr[1:2000], Pp[1:2000])         
+ax.plot(tarr[1:5000],krp[1:5000])
+#ax.plot(tarr[1:],krp[1:])
+#ax.set_ylabel('Cff(t)/Cff(0)')
+ax.set_xlabel('Time')
+#ax.plot(tarr[1:2000],krp[1:2000]/P[])/
+#ax[0].legend(['Pr', 'Pp'])
+#ax[1].plot(Psit[:,2000])   
+#ax[1].plot(tarr[1:2000], krp[1:2000])    
+#ax[1].set_ylabel('k reactant to product')
+#ax[1].set_xlabel('Time')
 plt.show()
+
+#plt.semilogx(np.linspace(0,len(tarr)-1,len(tarr),dtype=np.int8),tarr)
+
