@@ -8,21 +8,21 @@ from numpy.linalg import eig
 from scipy.linalg import expm
 from matplotlib.animation import FuncAnimation
 from scipy.integrate import trapz
-beta=10
+beta=0.4
 alpha=4
 charlie=0.001
 bbb=1
 
 kmax=9
-N=150
+N=250
 
-ga=0.005
+ga=0.64
 No=100
 Inf=1
 hbar=1
 om=np.linspace(-5,25,No)
 y=np.zeros(No,dtype = 'complex_')
-tarr = np.linspace(0.001,1200,num=N)
+tarr = np.linspace(0.001,30,num=N)
 delt=tarr[2]-tarr[1]
 K=np.zeros((2,2,2,2),dtype = 'complex_')
 L=np.zeros((2,2,2,2,N),dtype = 'complex_')
@@ -30,7 +30,7 @@ A=np.zeros((2,2,len(tarr)),dtype = 'complex_')
 AA=np.zeros((2,2),dtype = 'complex_')
 A[0,0,0]=1
 
-Hs=np.array([[-0.5,0.5],[0.5,0.5]])
+Hs=np.array([[-0,1],[1,0]])
 Ss=np.array([[1,0],[0,-1]])
 #coupling is sigma z
 DHs,V=eig(Ss)
@@ -39,7 +39,7 @@ DD=np.diag(DHs)
 #Hs=np.matmul(V,np.matmul(Hs,np.linalg.inv(V)))
 
 def J(x): #Spectral density
-    return ga*x #Ohmic bath
+    return np.pi/2*ga*x*np.exp(-abs(x)/2.5) #Ohmic bath
 def nb(o): #Bose occupation distribution
     return 1/(np.exp(o*beta)-1)
 def n(kk,ll,t):
@@ -123,7 +123,7 @@ for tin in enumerate(tarr[kmax:len(tarr)-1]):
 
 
 plt.figure()
-plt.plot(tarr[:len(tarr)-2],A[0,0,:len(tarr)-2])
-plt.plot(tarr[:len(tarr)-2],A[1,1,:len(tarr)-2])
-plt.plot(tarr[:len(tarr)-2],A[0,0,:len(tarr)-2]+A[1,1,:len(tarr)-2])
+#plt.plot(tarr[:len(tarr)-2],A[0,0,:len(tarr)-2])
+#plt.plot(tarr[:len(tarr)-2],A[1,1,:len(tarr)-2])
+plt.plot(tarr[:len(tarr)-2],A[0,0,:len(tarr)-2]-A[1,1,:len(tarr)-2])
 plt.show()
