@@ -14,7 +14,7 @@ charlie=0.001
 bbb=1
 
 kmax=4
-N=150
+N=200
 
 ga=0.005
 No=50
@@ -24,7 +24,7 @@ Inf=1
 hbar=1
 om=np.linspace(-15,15,No)
 y=np.zeros(No,dtype = 'complex_')
-tarr = np.linspace(0.001,15,num=N)
+tarr = np.linspace(0.001,200,num=N)
 delt=tarr[2]-tarr[1]
 steps=7
 xmin=-10
@@ -101,8 +101,8 @@ for tin in enumerate(tarr):
                 for x4 in enumerate(onetwo):
                     Inf=np.exp(-1/hbar*(x1[1]-x2[1])*(n(tin[0],tin[0],tin[1])*x1[1]-np.conjugate(n(tin[0],tin[0],tin[1]))*x2[1]))
                     for delk in np.linspace(1,tin[0]-1,tin[0],dtype=np.int8):
-                        Inf=Inf*np.exp(-1/hbar*(x3[1]-x4[1])*(n(tin[0]+delk,tin[0],tin[1])*x1[1]-np.conjugate(n(tin[0]+delk,tin[0],tin[1]))*x2[1]))
-                    #Inf=1
+                        Inf=Inf*np.exp(-1/hbar*(x3[1]-x4[1])*(n(tin[0],tin[0]-delk,tin[1])*x1[1]-np.conjugate(n(tin[0],tin[0]-delk,tin[1]))*x2[1]))
+                    #Inf=10
                     #print(Inf)
                     #for tin2 in enumerate(tarr[tin[0]:]):
                     #    for tin3 in enumerate(tarr[:tin[0]]):
