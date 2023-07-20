@@ -8,19 +8,17 @@ from numpy.linalg import eig
 from scipy.linalg import expm
 from matplotlib.animation import FuncAnimation
 from scipy.integrate import trapz
-beta=0.25
-
-kmax=4
-N=50
-
-ga=0.005
-No=20
+beta=0.1
+N=100
+kmax=3
+ga=0.1*np.pi/2
+No=120
 Inf=1
 hbar=1
 om=np.linspace(-5,25,No)
 y=np.zeros(No,dtype = 'complex_')
 yy=np.zeros(No,dtype = 'complex_')
-tarr = np.linspace(0,10,num=N)
+tarr = np.linspace(0,15,num=N)
 delt=(tarr[1]-tarr[0])/3
 K=np.zeros((2,2,2,2),dtype = 'complex_')
 L=np.zeros((2,2,2,2,N),dtype = 'complex_')
@@ -28,18 +26,16 @@ A=np.zeros((2,2,len(tarr)),dtype = 'complex_')
 AA=np.zeros((2,2),dtype = 'complex_')
 A[0,0,0]=1
 
-Hs=np.array([[-1,1],[1,1]])
+Hs=np.array([[1,1],[1,-1]])
 Ss=np.array([[1,0],[0,-1]])
 #coupling is sigma z
-DHs,V=eig(Ss)
+DHs,V=eig(Hs)
 DD=np.diag(DHs)
 #A[:,:,0]=np.matmul(V,np.matmul(A[:,:,0],np.linalg.inv(V)))
 #Hs=np.matmul(V,np.matmul(Hs,np.linalg.inv(V)))
 
 def J(x): #Spectral density
-    return np.pi/2*ga*x*np.exp(-abs(x)/2.5) #Ohmic bath
-def nb(o): #Bose occupation distribution
-    return 1/(np.exp(o*beta)-1)
+    return ga*x*np.exp(-abs(x)/7.5) #Ohmic bath
 def eta(kk,ll,t):
     l = min([kk, ll])
     k= max([kk,ll])
@@ -76,45 +72,44 @@ def eta(kk,ll,t):
 #        for xm in enumerate(backpositions[:Nmax]):
 #            Inf=Inf*np.exp(-1/hbar*(forpositions[xp[0]+delk]-backpositions[xp[0]+delk])*(n(xp[0]+delk,xp[0],time)*xp[1]-np.conjugate(n(xp[0]+delk,xp[0],time))*backpositions[xp[0]]))
 Inf=1
-onetwo=np.linspace(-1/2,1/2,2,dtype='int')
-onetwo[0]=Hs[0,0]
-onetwo[1]=Hs[1,1]
+onetwo=[-1,1]
+print(onetwo)
 TEO=expm(-1j*Hs*delt)
 TEO2=expm(1j*Hs*delt)
 
-def I(x1,x2,x3,x4,ii,jj,t):
-    Sum=0
-    for ii in np.linspace(0,3,4,dtype='int'):
-        for jj in np.linspace(ii,3,3-ii+1,dtype='int'):
-            for x1 in enumerate(onetwo): #forpositions is folded s+ and s-. Each is as long as the position grid
-                for x2 in enumerate(onetwo):
-                    for x3 in enumerate(onetwo): #forpositions is folded s+ and s-. Each is as long as the position grid
-                        for x4 in enumerate(onetwo):
-                            Sum=Sum-1/hbar*(x3[1]-x4[1])*(eta(ii,jj,t)*x1[1]-np.conjugate(eta(ii,jj,t))*x2[1])
-                            
-    return np.exp(Sum)
 def Influence(x1,x2,x3,x4,ii,jj,t):
     Sum=-1/hbar*(x3-x4)*(eta(ii,jj,t)*x1-np.conjugate(eta(ii,jj,t))*x2)                
     return np.exp(Sum)
+def Influencenull(x1,x2,ii):
+    Sum=-1/hbar*(x1-x2)*(eta(ii,ii,0)*x1-np.conjugate(eta(ii,ii,0))*x2)                
+    return np.exp(Sum)
     #num of possible paths 2**timesteps
 for tin in enumerate(tarr[:N-1]):
-    for i in np.linspace(0,1,2,dtype='int'):
-        for j in np.linspace(0,1,2,dtype='int'):
+    for i in enumerate(onetwo):
+        for j in enumerate(onetwo):
             T=0
-            Inf=Influence(i,j,i,j,0,0,tin[1])
-            for k in np.linspace(0,1,2,dtype='int'):
-                for l in np.linspace(0,1,2,dtype='int'):
+            for k in enumerate(onetwo):
+                for l in enumerate(onetwo):
+                    #Inf=Inf*Influence(k,l,i,j,tin[0],tin[0]+1,tin[1])#*Influencenull(k,l,tin[0])
                     #T=T+TEO[i,k]*TEO2[l,j]*A[k,l,0]
-                    for a in np.linspace(0,1,2,dtype='int'):
-                        for b in np.linspace(0,1,2,dtype='int'):
-                            Inf=Inf*Influence(i,j,a,b,delt,delt,tin[1])
-                            for x in np.linspace(0,1,2,dtype='int'):
-                                for y in np.linspace(0,1,2,dtype='int'):
-                                    T=T+TEO[i,k]*TEO[k,a]*TEO[a,x]*A[x,y,tin[0]]*TEO2[y,b]*TEO2[b,l]*TEO2[l,j]*Inf
-            
-            A[i,j,tin[0]+1]=T
+                    for a in enumerate(onetwo):
+                        for b in enumerate(onetwo):
+                            #Inf=Inf*Influence(a,b,i,j,tin[0],tin[0]+2,tin[1])*Influence(a,b,k,l,tin[0],tin[0]+1,tin[1])#*Influencenull(a,b,tin[0])
+                            #Inf=Inf*Influence(i,j,a,b,delt,delt,tin[1])
+                            for x in enumerate(onetwo):
+                                for y in enumerate(onetwo):
+                                    Inf=Influence(a[1],b[1],i[1],j[1],tin[0],tin[0]+2,tin[1])*Influence(a[1],b[1],k[1],l[1],tin[0],tin[0]+1,tin[1])*Influence(x[1],y[1],i[1],j[1],tin[0],tin[0]+3,tin[1])*Influence(x[1],y[1],a[1],b[1],tin[0],tin[0]+2,tin[1])*Influence(x[1],y[1],k[1],l[1],tin[0],tin[0]+1,tin[1])*Influencenull(x[1],y[1],tin[0])**4*Influence(k[1],l[1],i[1],j[1],tin[0],tin[0]+1,tin[1])
+                                    #print(Inf)
+                                    #Inf=1
+                                    T=T+TEO[i[0],k[0]]*TEO[k[0],a[0]]*TEO[a[0],x[0]]*A[x[0],y[0],tin[0]]*TEO2[y[0],b[0]]*TEO2[b[0],l[0]]*TEO2[l[0],j[0]]*Inf
+            A[i[0],j[0],tin[0]+1]=T
 plt.figure()
-plt.plot(tarr,A[0,0,:])
+plt.plot(tarr,A[0,0,:]-A[1,1,:])
 plt.plot(tarr,A[1,1,:])
+plt.plot(tarr,A[0,0,:])
+print(Hs)
 print(A[0,0,:]+A[1,1,:])
+Gibbs=expm(Hs*beta)
+Gibbs=Gibbs/(Gibbs[0,0]+Gibbs[1,1])
+plt.hlines(y=Gibbs[0,0], xmin=0, xmax=12.5, linewidth=2, color='r', linestyle='dashed')
 plt.show() 
