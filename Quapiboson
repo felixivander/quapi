@@ -7,14 +7,14 @@ from numpy.linalg import eig
 from scipy.linalg import expm
 from matplotlib.animation import FuncAnimation
 from scipy.integrate import trapz
-beta=5
+beta=10
 N=100
 kmax=3
 ga=0.1*np.pi/2
 No=120
 Inf=1
 hbar=1
-om=np.linspace(-5,25,No)
+om=np.linspace(-5,35,No)
 y=np.zeros(No,dtype = 'complex_')
 yy=np.zeros(No,dtype = 'complex_')
 tarr = np.linspace(0,15-0.15,num=N)
@@ -29,7 +29,7 @@ DHs,V=eig(Hs)
 DD=np.diag(DHs)
 kmax=3
 def J(x): #Spectral density
-    return ga*x*np.exp(-abs(x)/7.5) #Ohmic bath
+    return ga*x*np.exp(-x/7.5) if x>0 else -ga*x*np.exp(x/7.5) #Ohmic bath
 def eta(kk,ll,t):
     l = min([kk, ll])
     k= max([kk,ll])
@@ -42,7 +42,7 @@ def eta(kk,ll,t):
                 yy[iii[0]]=1/(2*np.pi)*J(om[iii[0]])/(om[iii[0]]**2)*np.exp(beta*hbar*om[iii[0]]/2)/(math.sinh(beta*hbar*om[iii[0]]/2))*(1-np.exp(-1j*om[iii[0]]*delt/2))
             
     else:
-        if 0<k<N:
+        if k<N:
             if l>0: #eta_kk' checked
                 for i in enumerate(om):
                     yy[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*((math.sin(om[i[0]]*delt/2))**2)*np.exp(-1j*om[i[0]]*delt*(k-l))
@@ -66,7 +66,7 @@ def eta(kk,ll,t):
 #        for xm in enumerate(backpositions[:Nmax]):
 #            Inf=Inf*np.exp(-1/hbar*(forpositions[xp[0]+delk]-backpositions[xp[0]+delk])*(n(xp[0]+delk,xp[0],time)*xp[1]-np.conjugate(n(xp[0]+delk,xp[0],time))*backpositions[xp[0]]))
 Inf=1
-onetwo=[-1,1]
+onetwo=[1,-1]
 print(onetwo)
 TEO=expm(-1j*Hs*delt)
 TEO2=expm(1j*Hs*delt)
@@ -84,7 +84,7 @@ for i in enumerate(onetwo):
             T=0
             for k in enumerate(onetwo):
                 for l in enumerate(onetwo):
-                    Inf=Influence(k[1],l[1],i[1],j[1],0,0+1,delt)*Influencenull(i[1],j[1],0)*Influencenull(i[1],j[1],delt)
+                    Inf=Influence(k[1],l[1],i[1],j[1],0,0+1,delt)*Influencenull(i[1],j[1],0)*Influencenull(k[1],l[1],1)
                     T=T+TEO[i[0],k[0]]*A[k[0],l[0],0]*TEO2[l[0],j[0]]*Inf
             A[i[0],j[0],1]=T
 kmax=2
@@ -95,7 +95,7 @@ for i in enumerate(onetwo):
                 for n in enumerate(onetwo):
                     for k in enumerate(onetwo):
                         for l in enumerate(onetwo):
-                            Inf=Influence(k[1],l[1],i[1],j[1],0,1+1,2*delt)*Influencenull(i[1],j[1],0)*Influencenull(i[1],j[1],1)*Influencenull(i[1],j[1],2)*Influence(m[1],n[1],i[1],j[1],1,1+1,2*delt)*Influence(k[1],l[1],m[1],n[1],0,1,delt)
+                            Inf=Influence(k[1],l[1],i[1],j[1],0,1+1,2*delt)*Influencenull(k[1],l[1],0)*Influencenull(m[1],n[1],1)*Influencenull(i[1],j[1],2)*Influence(m[1],n[1],i[1],j[1],1,1+1,2*delt)*Influence(k[1],l[1],m[1],n[1],0,1,delt)
                             T=T+TEO[i[0],m[0]]*TEO[m[0],k[0]]*A[k[0],l[0],0]*TEO2[l[0],n[0]]*TEO2[n[0],j[0]]*Inf
             A[i[0],j[0],2]=T
 kmax=3
@@ -113,7 +113,7 @@ for tin in enumerate(tarr[:N-3]):
                             #Inf=Inf*Influence(i,j,a,b,delt,delt,tin[1])
                             for x in enumerate(onetwo):
                                 for y in enumerate(onetwo):
-                                    Inf=Influence(a[1],b[1],i[1],j[1],1+tin[0],3+tin[0],3*delt+tin[1])*Influence(a[1],b[1],k[1],l[1],0+tin[0],1+tin[0],1*delt+tin[1])*Influence(x[1],y[1],i[1],j[1],0+tin[0],3+tin[0],delt*3+tin[1])*Influence(x[1],y[1],a[1],b[1],0+tin[0],1+tin[0],delt+tin[1])*Influence(x[1],y[1],k[1],l[1],0+tin[0],2+tin[0],delt*2+tin[1])*Influencenull(x[1],y[1],tin[0])*Influence(k[1],l[1],i[1],j[1],2+tin[0],+tin[0],delt+tin[1])*Influencenull(x[1],y[1],1+tin[0])*Influencenull(x[1],y[1],2+tin[0])*Influencenull(x[1],y[1],3+tin[0])
+                                    Inf=Influence(a[1],b[1],i[1],j[1],1+tin[0]+kmax,3+tin[0]+kmax,3*delt+tin[1])*Influence(a[1],b[1],k[1],l[1],1+tin[0]+kmax,2+tin[0]+kmax,2*delt+tin[1])*Influence(x[1],y[1],i[1],j[1],0+tin[0]+kmax,3+tin[0]+kmax,delt*3+tin[1])*Influence(x[1],y[1],a[1],b[1],0+tin[0]+kmax,1+tin[0]+kmax,delt+tin[1])*Influence(x[1],y[1],k[1],l[1],0+tin[0]+kmax,2+tin[0]+kmax,delt*2+tin[1])*Influencenull(x[1],y[1],tin[0]+kmax)*Influence(k[1],l[1],i[1],j[1],2+tin[0]+kmax,3+tin[0]+kmax,3*delt+tin[1])*Influencenull(a[1],b[1],1+tin[0]+kmax)*Influencenull(k[1],l[1],2+tin[0]+kmax)*Influencenull(i[1],j[1],3+tin[0]+kmax)
                                     #print(Inf)
                                     #Inf=1
                                     T=T+TEO[i[0],k[0]]*TEO[k[0],a[0]]*TEO[a[0],x[0]]*A[x[0],y[0],tin[0]]*TEO2[y[0],b[0]]*TEO2[b[0],l[0]]*TEO2[l[0],j[0]]*Inf
