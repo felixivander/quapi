@@ -1,0 +1,169 @@
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+from scipy.linalg import expm
+from scipy.integrate import trapz
+import itertools
+
+beta=5
+kmax=5
+N=110
+ga=0.1*np.pi/2
+No=1500
+Inf=1+1j
+hbar=1
+om=np.linspace(-50,50,No)
+yy=np.zeros(No,dtype = 'complex')
+tarr = np.linspace(0,16.5-0.15,num=N)
+delt=(tarr[1]-tarr[0])
+Hs=np.array([[1,1],[1,-1]],dtype = 'complex')
+Unitary=1+1j
+def J(x): #Spectral density
+    return ga*x*np.exp(-x/7.5) if x>0 else ga*x*np.exp(x/7.5) #Ohmic bath
+etakkd=np.zeros(kmax+1,dtype='complex')
+etakkdz=np.zeros(kmax+1,dtype='complex')
+for iii in enumerate(om):
+    yy[iii[0]]=1/(2*np.pi)*J(om[iii[0]])/(om[iii[0]]**2)*np.exp(beta*hbar*om[iii[0]]/2)/(math.sinh(beta*hbar*om[iii[0]]/2))*(1-np.exp(-1j*om[iii[0]]*delt))
+etanul=trapz(yy,om)
+for iii in enumerate(om):
+    yy[iii[0]]=1/(2*np.pi)*J(om[iii[0]])/(om[iii[0]]**2)*np.exp(beta*hbar*om[iii[0]]/2)/(math.sinh(beta*hbar*om[iii[0]]/2))*(1-np.exp(-1j*om[iii[0]]*delt/2))
+etanulz=trapz(yy,om)
+for difk in np.linspace(1,kmax,kmax,dtype='int'):
+    for i in enumerate(om):
+        yy[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*((math.sin(om[i[0]]*delt/2))**2)*np.exp(-1j*om[i[0]]*delt*(difk))
+    etakkd[difk]=trapz(yy,om)
+for difk in np.linspace(1,kmax,kmax,dtype='int'):
+    for i in enumerate(om):
+        yy[i[0]]=2/(1*np.pi)*J(om[i[0]])/(om[i[0]]**2)*np.exp(beta*hbar*om[i[0]]/2)/(math.sinh(beta*hbar*om[i[0]]/2))*((math.sin(om[i[0]]*delt/4)))*(math.sin(om[i[0]]*delt/2))*np.exp(-1j*om[i[0]]*(difk*delt-delt/4))
+    etakkdz[difk]=trapz(yy,om)
+onetwo=[1,-1]
+
+def Influencediff(dx1,dx2,dx3,dx4,diff):
+    x1=onetwo[dx1]
+    x2=onetwo[dx2]
+    x3=onetwo[dx3]
+    x4=onetwo[dx4]
+    Sum=-1/hbar*(x3-x4)*(etakkd[diff]*x1-np.conjugate(etakkd[diff])*x2)     # eq 12 line 1 Nancy quapi I           
+    return np.exp(Sum)
+
+def Influencediffz(dx1,dx2,dx3,dx4,diff): # eq 12 line 5 Nancy quapi I    
+    x1=onetwo[dx1]
+    x2=onetwo[dx2]
+    x3=onetwo[dx3]
+    x4=onetwo[dx4]
+    Sum=-1/hbar*(x3-x4)*(etakkdz[diff]*x1-np.conjugate(etakkdz[diff])*x2)                
+    return np.exp(Sum)
+
+def Influencenull(dx1,dx2): # eq 12 line 2 Nancy quapi I    
+    x1=onetwo[dx1]
+    x2=onetwo[dx2]
+    Sum=-1/hbar*(x1-x2)*((etanul)*x1-np.conjugate(etanul)*x2)                
+    return np.exp(Sum)
+    
+def Influencenullz(dx1,dx2): # eq 12 line 4 Nancy quapi I    
+    x1=onetwo[dx1]
+    x2=onetwo[dx2]
+    Sum=-1/hbar*(x1-x2)*((etanulz)*x1-np.conjugate(etanulz)*x2)                
+    return np.exp(Sum)
+
+AA = np.zeros([4 if (i > 0) else len(tarr) for i in range(kmax+1)], dtype = 'complex')
+def binseq(k):
+    return [''.join(x) for x in itertools.product('0123', repeat=k)] #all possible paths 4^k         
+paths=binseq(kmax+1)
+Id=np.array([[1,0],[0,1]],dtype = 'complex')
+Idz=np.array([[0],[0],[0],[0]],dtype = 'complex')
+I0=np.array([Influencenull(0,0),Influencenull(1,0),Influencenull(0,1),Influencenull(1,1)], dtype = "complex")
+K=np.zeros((4,4),dtype = 'complex')
+I=np.zeros((4,4,kmax+1),dtype = 'complex')
+A=np.zeros((4,len(tarr)),dtype = 'complex')
+
+for i in np.arange(0,kmax+1):
+    I[0,0,i]=Influencediff(0,0,0,0,i)
+    I[0,1,i]=Influencediff(1,0,0,0,i)
+    I[0,2,i]=Influencediff(0,1,0,0,i)
+    I[0,3,i]=Influencediff(1,1,0,0,i)
+
+    I[1,0,i]=Influencediff(0,0,1,0,i)
+    I[1,1,i]=Influencediff(1,0,1,0,i)
+    I[1,2,i]=Influencediff(0,1,1,0,i)
+    I[1,3,i]=Influencediff(1,1,1,0,i)
+
+    I[2,0,i]=Influencediff(0,0,0,1,i)
+    I[2,1,i]=Influencediff(1,0,0,1,i)
+    I[2,2,i]=Influencediff(0,1,0,1,i)
+    I[2,3,i]=Influencediff(1,1,0,1,i)
+
+    I[3,0,i]=Influencediff(0,0,1,1,i)
+    I[3,1,i]=Influencediff(1,0,1,1,i)
+    I[3,2,i]=Influencediff(0,1,1,1,i)
+    I[3,3,i]=Influencediff(1,1,1,1,i)
+
+K=expm(np.kron(1j*Hs*delt,Id)+np.kron(Id,(-1j*Hs*delt)))
+##L[:4,4:]=expm(np.kron(1j*Hs*delt,Id)+np.kron(Id,(-1j*Hs*delt)))
+#L[4:,4:]=expm(np.kron(1j*Hs*delt,Id)+np.kron(Id,(-1j*Hs*delt)))
+K[0,0]*=Influencediff(0,0,0,0,1)
+K[0,1]*=Influencediff(1,0,0,0,1)
+K[0,2]*=Influencediff(0,1,0,0,1)
+K[0,3]*=Influencediff(1,1,0,0,1)
+
+K[1,0]*=Influencediff(0,0,1,0,1)
+K[1,1]*=Influencediff(1,0,1,0,1)
+K[1,2]*=Influencediff(0,1,1,0,1)
+K[1,3]*=Influencediff(1,1,1,0,1)
+
+K[2,0]*=Influencediff(0,0,0,1,1)
+K[2,1]*=Influencediff(1,0,0,1,1)
+K[2,2]*=Influencediff(0,1,0,1,1)
+K[2,3]*=Influencediff(1,1,0,1,1)
+
+K[3,0]*=Influencediff(0,0,1,1,1)
+K[3,1]*=Influencediff(1,0,1,1,1)
+K[3,2]*=Influencediff(0,1,1,1,1)
+K[3,3]*=Influencediff(1,1,1,1,1)
+
+P=expm(np.kron(1j*Hs*delt,Id)+np.kron(Id,(-1j*Hs*delt)))
+##L[:4,4:]=expm(np.kron(1j*Hs*delt,Id)+np.kron(Id,(-1j*Hs*delt)))
+#L[4:,4:]=expm(np.kron(1j*Hs*delt,Id)+np.kron(Id,(-1j*Hs*delt)))
+#print(rdt[1,:])
+#rdt[tuple([int(i) for i in paths[0][:-1]])][0]=1
+#print(rdt[0][0][2])
+#print(tuple([0, 1]))
+A[0,0]=1
+
+rdt = np.zeros([4 if (i > 0) else len(tarr) for i in range(kmax+1)], dtype = "complex")
+init=[0]
+for i in np.arange(kmax):
+    init=np.append(init,0)
+rdt[tuple([int(i) for i in init[:]])]=1
+
+pathz=binseq(kmax)
+
+for time in np.arange(0,N-1):
+    for path in paths:
+        idxp=tuple([int(i) for i in path[:-1]])
+        idxm=tuple([int(i) for i in path[1:]])
+        temp=P[tuple([int(i) for i in path[:2]])]*rdt[time][idxm]*I0[idxp[-1]]
+        for i in range(1, kmax+1):
+            temp*=I[int(path[0]),int(path[i]),i]
+        rdt[time+1][idxp]+=temp
+    for path in pathz:
+        idx=tuple([int(i) for i in path[:]])
+        A[idx[0]][time+1]+=rdt[time+1][idx]*I0[idx[0]]
+# print(rdt)
+#print(L[4:,4:])
+x = tarr[:-kmax]
+y = A[3,:-kmax]
+y0 = A[0,:-kmax]
+plt.plot(x,y0-y)
+#plt.plot(x,y0)
+#plt.plot(x,y)
+#plt.ylim((-1, 1))
+plt.xlim((0, 15))
+#print(y0+y)
+Gibbs=expm(Hs*beta)
+Gibbs=Gibbs/(Gibbs[0,0]+Gibbs[1,1])
+#plt.hlines(y=Gibbs[0,0], xmin=0, xmax= 15, linewidth=2, color='r', linestyle='dashed')
+
+#plt.hlines(y=-0.75, xmin=tarr[N-1], xmax=tarr[0], linewidth=2, color='r', linestyle='dashed')
+#plt.vlines(x=tarr[kmax], ymin=-1, ymax=1, linewidth=2, color='r', linestyle='dashed')
+plt.show() 
